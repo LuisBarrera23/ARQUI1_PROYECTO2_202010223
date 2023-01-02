@@ -559,6 +559,55 @@ integrar MACRO
     pop_automatico
 ENDM
 
+PixelEjes MACRO x,y
+    push_automatico
+    mov ah,0ch ;modo video para graficar un pixel
+    mov al, 002AH ; pasamos el color que queramos
+    mov bh, 00H ; numero de pagina
+    MOV dx, y ;coordenada en y 
+	MOV cx, x ;coordenada en y 
+	INT 10H ;interrupcion modo video
+    pop_automatico
+ENDM
+
+DibujarEjes MACRO
+    LOCAL Ejex,Ejey ; declaracion de etiquetas locales de la macro
+    push_automatico
+
+    mov ah, 0
+    mov al, 13h ; resolucion 320x200
+    int 10h ; activamos modo video
+
+    MOV CX,0 ; empezamos a graficar desde el pixel en X 0 
+    MOV DX,100 ; coordenada en Y se mantiene fijo en la mitad de la pantalla
+    Ejex:
+    MOV AH,0CH ;modo para dibujar un pixel
+    MOV AL,4 ;color rojo 
+    INT 10H ;interrupcion del modo video
+    INC CX ; contador de cx el cual se utiliza para graficar en X
+    CMP CX,319 ; al alcanzar el maximo de la pantalla  sale si no repite la impresion del pixel
+    JNZ Ejex
+
+    MOV CX,160D ; coordenada en X se mantiene fijo en la mitad de la pantalla 
+    MOV DX,0D ; empezamos a graficar Y desde el pixel 0
+    Ejey:
+    MOV AH,0CH ;modo para dibujar un pixel  
+    MOV AL,4 ;color rojo
+    INT 10H ; interrupcion  para ejecutar en el modo video
+    INC DX ; incrementamos coordenada en Y 
+    CMP DX,199 ;si no hemos llegado al tope de la pantalla volvemos a desplazarnos en Y
+    JNZ Ejey
+
+    MOV AH, 0010H
+    INT 0016H ; interrupcion para congelar la pantalla hasta esperar pulsacion 
+
+    mov ah,00H
+    mov al,03H; volvemos a configurar la pantalla para regresar al menu
+    INT 10H
+
+    pop_automatico
+
+ENDM
 .MODEL small ; Utiliza un espacio 'medium' de almacenamiento
 
 ;-------------------AREA DE STACK------------------------
@@ -580,7 +629,7 @@ ENDM
     SolicitarCoeficiente1 DB 0AH, 0DH, ' - Ingrese el coeficiente de x^1: ', '$'
     SolicitarCoeficiente0 DB 0AH, 0DH, ' - Ingrese el coeficiente del termino independiente: ', '$'
 
-    MenuPrincipal DB 0AH, 0DH,0AH, 0DH,' Ingrese el numero de la opcion que desea:',0AH,0DH,' 1) Ingresar los coeficientes de la funcion', 0AH, 0DH,' 2) Imprimir la funcion almacenada',0AH,0DH,' 3) Imprimir derivada de la funcion almacenada',0AH,0DH,' ','$'
+    MenuGraficas DB 0AH, 0DH,0AH, 0DH,' Ingrese el numero de la opcion que desea:',0AH,0DH,' 1) Grafica Funcion Original', 0AH, 0DH,' 2) Grafica Funcion Derivada',0AH,0DH,' 3) Grafica Funcion Integral',0AH,0DH,' 4) Regresar al menu principal',0AH,0DH,' ','$'
 
     asteriscos DB 0AH,0DH,'**********************************************************************','$'
     iguales DB 0AH,0DH, '========================================================================','$'
@@ -619,6 +668,7 @@ ENDM
 	Integrada3 DB 002BH, 0000, 0000,  '$'
     Integrada2 DB 002BH, 0000, 0000,  '$'
     Integrada1 DB 002BH, 0000, 0000,  '$'
+    numero1 DB 002BH, 0000, 0000,  '$' 
 
     ;------------------------Variables para funcionamiento general--------------------------
     TextoIngresado DB 15 dup('$') ;guardara el texto cuando se ingresan los coeficientes
@@ -665,7 +715,8 @@ ENDM
         JE OPCION7 ;METODO 2 STEFFENSEN
         CMP AL, 56D ; codigo ascii de 8
         JE OPCION8 ; SALIR
-
+        
+        
         limpiarpantalla ;en caso de error para dejar el mensaje 
         Imprimir Erroropcion
         imprimir salto
@@ -681,7 +732,7 @@ ENDM
     OPCION4:
         JMP MostrarIntegrada
     OPCION5:
-        JMP Temporal
+        JMP opcionGraficar
     OPCION6:
         JMP Temporal
     OPCION7:
@@ -861,6 +912,42 @@ ENDM
 
 
     opcionGraficar:
+        limpiarpantalla
+        imprimir MenuGraficas ;imprimimos menu de graficas
+        obteneropcion ; Captura la tecla presionada
+
+        CMP AL, 49D ; codigo ascii de 1
+        JE G1 ;MOSTRAR FUNCION ORIGINAL
+        CMP AL, 50D ; codigo ascii de 2
+        JE G2 ;MOSTRAR FUNCION DERIVADA
+        CMP AL, 51D ; codigo ascii de 3
+        JE G3 ;MOSTRAR FUNCION INTEGRADA
+        CMP AL, 52D ; codigo ascii de 4
+        JE SALIRG ;MOSTRAR FUNCION INTEGRADA
+
+        limpiarpantalla ;en caso de error para dejar el mensaje 
+        Imprimir Erroropcion
+        imprimir salto
+        JMP MENU2 ; Si el caracter no es un numero entre [1,8] regresa al menu
+
+        G1:
+            limpiarpantalla
+            DibujarEjes
+            jmp MENU
+        G2:
+            limpiarpantalla
+            DibujarEjes
+            jmp MENU
+        G3:
+            limpiarpantalla
+            DibujarEjes
+            jmp MENU
+
+        SALIRG:
+            JMP MENU
+        
+        
+
 
     Temporal:
         limpiarpantalla
